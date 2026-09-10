@@ -685,6 +685,7 @@ __metadata:
     style-loader: "npm:^4.0.0"
     terser-webpack-plugin: "npm:^5.3.14"
     typescript: "npm:^5"
+    uplot: "npm:^1.6.32"
     vite: "npm:^8.0.9"
     vitest: "npm:^4.1.0"
     webpack: "npm:^5"
@@ -18120,6 +18121,13 @@ __metadata:
   bin:
     update-browserslist-db: cli.js
   checksum: 10/ca883e9d0fca1b5bfb9d5e7d9468c5ddd1d66ea827566f474875171381ad33b84aa555c138094fb2c6297c680e06482ad8b4c1ad931e8bfab9a4cf36ea9cf006
+  languageName: node
+  linkType: hard
+
+"uplot@npm:^1.6.32":
+  version: 1.6.32
+  resolution: "uplot@npm:1.6.32"
+  checksum: 10/78a4ea0cf46ee1ea2814304b3c24002d52b7e98995dfc5fe9dcf05ce4873b62d26f81f03613dbb8b63e451cbfe369e314591c4fe8113f8453860ca71b8dc7430
   languageName: node
   linkType: hard
 
