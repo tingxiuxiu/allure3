@@ -1,0 +1,8 @@
+{
+  "name": "Allure 3",
+  "user": "node",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "install": "yarn install --immutable && yarn build"
+}

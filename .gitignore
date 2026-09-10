@@ -52,7 +52,9 @@ build
 allure-results.zip
 
 # Cursor IDE ignore
-.cursor/
+.cursor/*
+!.cursor/environment.json
+!.cursor/Dockerfile
 .cursorrules
 .cursorignore
 .cursorindexingignore
