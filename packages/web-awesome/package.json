@@ -82,6 +82,7 @@
     "style-loader": "^4.0.0",
     "terser-webpack-plugin": "^5.3.14",
     "typescript": "^5",
+    "uplot": "^1.6.32",
     "vite": "^8.0.9",
     "vitest": "^4.1.0",
     "webpack": "^5",

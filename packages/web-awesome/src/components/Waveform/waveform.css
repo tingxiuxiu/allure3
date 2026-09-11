@@ -1,0 +1,931 @@
+/* Native waveform analysis page, ported from the standalone viewer. All rules
+   are scoped under `.waveform-embed` so the report layout is untouched. */
+
+.waveform-embed {
+  position: relative;
+  width: 100%;
+}
+
+.waveform-embed[data-theme="dark"] {
+  color-scheme: dark;
+  --action: #2997ff;
+  --action-focus: #64d2ff;
+  --ink: #f5f5f7;
+  --ink-80: #d2d2d7;
+  --muted: #86868b;
+  --hairline: #3a3a3c;
+  --divider: #2c2c2e;
+  --canvas: #272729;
+  --parchment: #000000;
+  --pearl: #1d1d1f;
+  --chip: #3a3a3c;
+  --track: #1d1d1f;
+  --warn: #ffd60a;
+  --warn-bg: #3a3000;
+  --warn-border: #6b5a00;
+  --error: #ff6961;
+  --error-bg: #3a1212;
+  --error-border: #7a3030;
+  --appbar-bg: rgb(0 0 0 / 72%);
+  --appbar-border: rgb(255 255 255 / 10%);
+  --drawer-bg: rgb(39 39 41 / 94%);
+  --action-soft: rgb(41 151 255 / 22%);
+  --action-fill: rgb(41 151 255 / 16%);
+  --ink-soft: rgb(245 245 247 / 16%);
+  --scope-bg: rgb(41 151 255 / 18%);
+  --split: rgb(255 255 255 / 12%);
+  --cursor-b: #d2d2d7;
+  --on-cursor-b: #000000;
+  --on-action: #ffffff;
+}
+
+.waveform-embed[data-theme="light"] {
+  color-scheme: light;
+  --action: #0066cc;
+  --action-focus: #0071e3;
+  --ink: #1d1d1f;
+  --ink-80: #333333;
+  --muted: #7a7a7a;
+  --hairline: #e0e0e0;
+  --divider: #f0f0f0;
+  --canvas: #ffffff;
+  --parchment: #f5f5f7;
+  --pearl: #fafafc;
+  --chip: #d2d2d7;
+  --track: #e8e8ed;
+  --warn: #704d00;
+  --warn-bg: #fff8e7;
+  --warn-border: #f4d38a;
+  --error: #a50000;
+  --error-bg: #fff2f2;
+  --error-border: #f0b8b8;
+  --appbar-bg: rgb(245 245 247 / 80%);
+  --appbar-border: rgb(0 0 0 / 8%);
+  --drawer-bg: rgb(255 255 255 / 96%);
+  --action-soft: rgb(0 102 204 / 18%);
+  --action-fill: rgb(0 102 204 / 10%);
+  --ink-soft: rgb(29 29 31 / 18%);
+  --scope-bg: #e8f2fc;
+  --split: rgb(0 0 0 / 12%);
+  --cursor-b: #1d1d1f;
+  --on-cursor-b: #ffffff;
+  --on-action: #ffffff;
+}
+
+.waveform-embed .waveform-embed-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.waveform-embed .waveform-embed-error {
+  color: var(--error);
+}
+
+.waveform-embed button,
+.waveform-embed input {
+  font: inherit;
+}
+
+.waveform-embed button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.waveform-embed button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.waveform-embed button:focus-visible,
+.waveform-embed input:focus-visible {
+  outline: 2px solid var(--action-focus);
+  outline-offset: 2px;
+}
+
+.waveform-embed .waveform-root {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--parchment);
+  color: var(--ink);
+  font-family: "SF Pro Text", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.waveform-embed .waveform-root[data-density="embedded"] {
+  height: 600px;
+  max-height: 600px;
+}
+
+.waveform-embed .waveform-root[data-density="fullscreen"] {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.waveform-embed .app-bar {
+  z-index: 20;
+  display: flex;
+  min-height: 52px;
+  flex: 0 0 52px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 17px;
+  border-bottom: 1px solid var(--appbar-border);
+  background: var(--appbar-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.waveform-embed .brand-lockup {
+  min-width: max-content;
+}
+
+.waveform-embed .brand-title {
+  margin: 0;
+  font-family: "SF Pro Display", Inter, system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.waveform-embed .brand-meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.waveform-embed .toolbar-divider {
+  width: 1px;
+  height: 24px;
+  flex: 0 0 1px;
+  background: var(--hairline);
+}
+
+.waveform-embed .segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 9999px;
+  background: var(--track);
+}
+
+.waveform-embed .segmented-split {
+  width: 1px;
+  height: 16px;
+  flex: 0 0 1px;
+  align-self: center;
+  margin: 0 2px;
+  background: var(--split);
+}
+
+.waveform-embed .tool-button,
+.waveform-embed .utility-button,
+.waveform-embed .icon-button {
+  border: 0;
+  color: var(--ink-80);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 400;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    transform 100ms ease;
+}
+
+.waveform-embed .tool-button {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.waveform-embed .tool-button[data-active="true"] {
+  background: var(--canvas);
+  color: var(--action);
+}
+
+.waveform-embed .utility-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.waveform-embed .utility-button:hover,
+.waveform-embed .icon-button:hover {
+  background: var(--chip);
+}
+
+.waveform-embed .utility-button.primary {
+  padding-inline: 14px;
+  border-radius: 9999px;
+  background: var(--action);
+  color: var(--on-action);
+}
+
+.waveform-embed .utility-button:disabled {
+  cursor: default;
+  color: var(--muted);
+}
+
+.waveform-embed .icon-button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.waveform-embed .toolbar-spacer {
+  flex: 1;
+}
+
+.waveform-embed .toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.waveform-embed .switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-80);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.waveform-embed .switch-label input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--action);
+}
+
+.waveform-embed .notice {
+  display: flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 17px;
+  border-bottom: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.waveform-embed .notice.error {
+  border-bottom-color: var(--error-border);
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.waveform-embed .loading-state {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.waveform-embed .workspace {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  gap: 12px;
+  padding: 12px;
+}
+
+.waveform-embed .chart-stack {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  gap: 8px;
+}
+
+.waveform-embed .chart-card {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--canvas);
+}
+
+.waveform-embed .chart-card-header {
+  display: flex;
+  min-height: 34px;
+  flex: 0 0 34px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.waveform-embed .chart-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.waveform-embed .channel-legend {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.waveform-embed .legend-item {
+  display: inline-flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.waveform-embed .legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.waveform-embed .channel-readouts {
+  pointer-events: none;
+  position: absolute;
+  top: 8px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.waveform-embed .channel-readout {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  backdrop-filter: saturate(180%) blur(12px);
+}
+
+.waveform-embed .channel-readouts-tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+.waveform-embed .channel-readouts[data-tag="A"] .channel-readouts-tag {
+  background: var(--action-soft);
+  color: var(--action);
+}
+
+.waveform-embed .channel-readouts[data-tag="B"] .channel-readouts-tag {
+  background: var(--ink-soft);
+  color: var(--cursor-b);
+}
+
+.waveform-embed .chart-region {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  background: var(--canvas);
+}
+
+.waveform-embed .plot-host {
+  position: absolute;
+  inset: 0;
+}
+
+.waveform-embed .plot-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.waveform-embed .plot-canvas canvas {
+  max-width: none;
+}
+
+.waveform-embed .plot-canvas .uplot,
+.waveform-embed .plot-canvas .u-wrap {
+  pointer-events: none;
+}
+
+.waveform-embed .plot-canvas .u-over {
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.waveform-embed .plot-canvas .u-over[data-tool="box"] {
+  cursor: crosshair;
+}
+
+.waveform-embed .plot-canvas .u-over[data-tool="pan"] {
+  cursor: grab;
+}
+
+.waveform-embed .plot-canvas .u-over[data-tool="pan"]:active {
+  cursor: grabbing;
+}
+
+.waveform-embed .plot-canvas .u-over[data-tool="cursor"] {
+  cursor: col-resize;
+}
+
+.waveform-embed .plot-canvas .u-select {
+  background: var(--action-fill);
+  border: 1px solid var(--action);
+}
+
+.waveform-embed .plot-layer {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.waveform-embed .side-panel {
+  display: flex;
+  width: 252px;
+  min-height: 0;
+  flex: 0 0 252px;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+}
+
+.waveform-embed .panel-card {
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--canvas);
+  padding: 14px;
+}
+
+.waveform-embed .panel-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+}
+
+.waveform-embed .panel-caption {
+  margin: -7px 0 12px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.waveform-embed .channel-list {
+  display: grid;
+  gap: 4px;
+}
+
+.waveform-embed .channel-row {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 9px;
+  border-radius: 8px;
+  color: var(--ink-80);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.waveform-embed .channel-row:hover {
+  background: var(--parchment);
+}
+
+.waveform-embed .channel-row input {
+  accent-color: var(--action);
+}
+
+.waveform-embed .cursor-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.waveform-embed .cursor-marks {
+  display: grid;
+  gap: 6px;
+}
+
+.waveform-embed .cursor-mark {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 8px 8px 10px;
+  border-left: 2px solid var(--hairline);
+  border-radius: 11px;
+  background: var(--parchment);
+}
+
+.waveform-embed .cursor-mark[data-mark="A"] {
+  border-left-color: var(--action);
+}
+
+.waveform-embed .cursor-mark[data-mark="B"] {
+  border-left-color: var(--cursor-b);
+}
+
+.waveform-embed .cursor-badge {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 9999px;
+  color: var(--on-action);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.waveform-embed .cursor-mark[data-mark="A"] .cursor-badge {
+  background: var(--action);
+}
+
+.waveform-embed .cursor-mark[data-mark="B"] .cursor-badge {
+  background: var(--cursor-b);
+  color: var(--on-cursor-b);
+}
+
+.waveform-embed .cursor-mark-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.waveform-embed .cursor-mark-time {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waveform-embed .cursor-mark-index {
+  color: var(--muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.waveform-embed .cursor-mark-empty {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.waveform-embed .cursor-clear {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.waveform-embed .cursor-clear:hover:not(:disabled) {
+  background: var(--chip);
+  color: var(--ink-80);
+}
+
+.waveform-embed .cursor-clear:disabled {
+  visibility: hidden;
+}
+
+.waveform-embed .cursor-delta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px 2px 2px;
+  border-top: 1px solid var(--divider);
+}
+
+.waveform-embed .cursor-delta-cell {
+  min-width: 0;
+}
+
+.waveform-embed .cursor-delta-label {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+
+.waveform-embed .cursor-delta-value {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waveform-embed .cursor-delta[data-ready="true"] .cursor-delta-value {
+  color: var(--action);
+}
+
+.waveform-embed .cursor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.waveform-embed .cursor-table thead th {
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 400;
+  text-align: right;
+}
+
+.waveform-embed .cursor-table thead th:first-child {
+  text-align: left;
+}
+
+.waveform-embed .cursor-table-group th {
+  padding: 8px 4px 4px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: left;
+}
+
+.waveform-embed .cursor-table td,
+.waveform-embed .cursor-table tbody th[scope="row"] {
+  padding: 4px;
+  border-bottom: 1px solid var(--divider);
+  white-space: nowrap;
+}
+
+.waveform-embed .cursor-table td {
+  text-align: right;
+}
+
+.waveform-embed .cursor-table tbody th[scope="row"] {
+  color: var(--ink-80);
+  font-weight: 600;
+  text-align: left;
+}
+
+.waveform-embed .cursor-ch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.waveform-embed .cursor-table td:last-child {
+  color: var(--muted);
+}
+
+.waveform-embed .drawer {
+  position: absolute;
+  z-index: 30;
+  top: 12px;
+  right: 12px;
+  width: 256px;
+  max-height: calc(100% - 24px);
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--drawer-bg);
+  padding: 14px;
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.waveform-embed .statistics-bar {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--hairline);
+  background: var(--canvas);
+}
+
+.waveform-embed .statistics-compact {
+  display: flex;
+  height: 38px;
+  align-items: center;
+  gap: 20px;
+  overflow: hidden;
+  padding: 0 17px;
+  color: var(--ink-80);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.waveform-embed .statistics-compact strong {
+  font-weight: 600;
+}
+
+.waveform-embed .scope-pill {
+  margin-left: auto;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  background: var(--scope-bg);
+  color: var(--action);
+  white-space: nowrap;
+}
+
+.waveform-embed .statistics-full {
+  overflow: auto;
+  padding: 10px 17px 12px;
+}
+
+.waveform-embed .statistics-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.waveform-embed .statistics-heading h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+}
+
+.waveform-embed .statistics-heading span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.waveform-embed .stats-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.waveform-embed .stats-card {
+  min-width: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--parchment);
+  padding: 10px 12px;
+}
+
+.waveform-embed .stats-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.waveform-embed .stats-card-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.waveform-embed .stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ink-80);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.waveform-embed .stats-table th {
+  padding: 4px 7px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.waveform-embed .stats-table td {
+  padding: 5px 7px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.waveform-embed .stats-table th:first-child,
+.waveform-embed .stats-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+}
+
+.waveform-embed .stats-summary {
+  padding-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.waveform-embed .cursor-line {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 1px;
+}
+
+.waveform-embed .cursor-line-a {
+  background: var(--action);
+}
+
+.waveform-embed .cursor-line-b {
+  background: var(--cursor-b);
+}
+
+.waveform-embed .cursor-line-follow {
+  width: 0;
+  border-left: 1px dashed var(--action);
+  opacity: 0.45;
+}
+
+@media (max-width: 760px) {
+  .waveform-embed .app-bar {
+    gap: 6px;
+    padding-inline: 10px;
+  }
+
+  .waveform-embed .brand-meta,
+  .waveform-embed .toolbar-divider,
+  .waveform-embed .switch-label,
+  .waveform-embed .tool-button span,
+  .waveform-embed .utility-button span {
+    display: none;
+  }
+
+  .waveform-embed .tool-button {
+    width: 28px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .waveform-embed .workspace {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .waveform-embed .chart-stack {
+    gap: 5px;
+  }
+
+  .waveform-embed .chart-card {
+    border-radius: 8px;
+  }
+
+  .waveform-embed .chart-card-header {
+    min-height: 27px;
+    flex-basis: 27px;
+    padding-inline: 9px;
+  }
+
+  .waveform-embed .stats-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .waveform-embed .statistics-compact {
+    gap: 10px;
+    padding-inline: 10px;
+  }
+
+  .waveform-embed .statistics-compact > span:nth-child(2) {
+    display: none;
+  }
+}

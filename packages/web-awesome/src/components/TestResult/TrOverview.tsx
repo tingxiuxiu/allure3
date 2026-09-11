@@ -12,6 +12,7 @@ import { TrPwTraces } from "@/components/TestResult/TrPwTraces";
 import { TrSetup } from "@/components/TestResult/TrSetup";
 import { TrSteps } from "@/components/TestResult/TrSteps";
 import { TrTeardown } from "@/components/TestResult/TrTeardown";
+import { WaveformAnalysis } from "@/components/Waveform";
 import { useTestResultOverviewFocusScroll } from "@/hooks/useTestResultOverviewFocusScroll";
 import { useI18n } from "@/stores/locale";
 import { currentTrId } from "@/stores/testResult";
@@ -54,6 +55,7 @@ export const TrOverview: FunctionalComponent<TrOverviewProps> = ({ testResult })
         {Boolean(bodyItems.length) && <TrSteps id={testResultId} bodyItems={bodyItems} />}
         {Boolean(teardown?.length) && <TrTeardown id={testResultId} teardown={teardown} />}
       </div>
+      <WaveformAnalysis testResult={testResult} />
     </>
   );
 };
