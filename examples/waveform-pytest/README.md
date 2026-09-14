@@ -114,6 +114,11 @@ Notes:
 
 - `voltage`, `current`, `motor` are the built‑in groups shown in the embedded view.
   Additional groups are allowed and appear in fullscreen.
+- `timeline` may be a uniform spec `{ t0, dt, unit }` **or** a per‑sample float
+  array of time‑related markers. The array does **not** need to be uniform or
+  even monotonic: the page draws each curve against the sample index and uses
+  the timeline only for X‑axis tick labels and cursor readouts. (See
+  `test_nonuniform_timeline_marker` for a real‑world non‑uniform example.)
 - Channels sharing a `pairId` toggle together (e.g. the three voltage phases).
 - Short channels are **not** padded with zeros: the report pads the tail with `NaN`
   (drawn as gaps) and shows a warning banner. `build_waveform_document` records the

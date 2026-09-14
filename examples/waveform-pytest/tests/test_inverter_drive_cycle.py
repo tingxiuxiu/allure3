@@ -81,6 +81,31 @@ def test_partial_capture_emits_warning(attach_waveform):
 
 
 @allure.epic("电机台架试验")
+@allure.feature("变频器稳态驱动")
+@allure.story("非均匀时间标记")
+@allure.tag("waveform", "timeline")
+@allure.title("真实非均匀 timeline：按时间标记数组绘制（不要求等间隔/单调）")
+@allure.description(
+    "真实台架的 timeline 往往是一组与时间相关的浮点“标记”，间隔不均匀，甚至可能有轻微非单调抖动。"
+    "波形页按采样序号绘制曲线，timeline 仅用于坐标轴刻度与游标读数标签，因此这种数据也能正常绘制。"
+)
+def test_nonuniform_timeline_marker(attach_waveform):
+    import numpy as np
+
+    with allure.step("采集三相波形，并生成一组非均匀的浮点时间标记 timeline"):
+        groups = mock_steady_drive(n=N, fs=FS)
+        rng = np.random.default_rng(3)
+        # 从 ~5000 起、步长不均匀的累加标记（模拟真实的不均匀 timeline）
+        timeline = (5000.0 + np.cumsum(0.5 + rng.random(N) * 1.5)).round(6).tolist()
+        doc = build_waveform_document(sample_count=N, sampling_rate=FS, groups=groups, timeline=timeline)
+
+    with allure.step("登记波形附件（timeline 为逐点浮点数组）"):
+        attach_waveform(doc)
+
+    assert isinstance(doc["timeline"], list) and len(doc["timeline"]) == N
+
+
+@allure.epic("电机台架试验")
 @allure.feature("冒烟")
 @allure.story("无波形用例")
 @allure.title("普通断言用例：不产生波形（详情底部无波形页）")
