@@ -1,7 +1,6 @@
 import { channelColor, type ColorScheme } from "../theme";
 import { envelopeSeries, minmaxColumns } from "../waveform/minmax";
 import type { NormalizedWaveform } from "../waveform/normalize";
-import { timeAt } from "../waveform/timeline";
 import { seriesYRange } from "../waveform/yRange";
 
 export type ChartPoint = [number, number | null];
@@ -37,7 +36,10 @@ export function buildChartModel(
   const block = data.groups[group] ?? {};
   const ids = Object.keys(block).filter((id) => visible.has(id));
   const buckets = Math.max(64, width * 2);
-  const cols = minmaxColumns(i0, i1, buckets, (i) => timeAt(data.timeline, i));
+  // Draw against the sample index: it is always uniform and strictly increasing,
+  // even when `data.timeline` is an arbitrary, non-uniform, possibly
+  // non-monotonic marker array. The timeline is only used for axis/readout labels.
+  const cols = minmaxColumns(i0, i1, buckets, (i) => i);
   const x = cols.map((c) => c.x);
   const traces: ChartTrace[] = [];
   const ys: Float64Array[] = [];
@@ -59,9 +61,9 @@ export function buildChartModel(
   });
 
   const yr = seriesYRange(ys, { i0, i1 }, yFollow);
-  const xMin = x[0] ?? timeAt(data.timeline, i0);
-  const xMax = x[x.length - 1] ?? timeAt(data.timeline, i1);
-  const pad = xMax === xMin ? (data.samplingRate > 0 ? 1 / data.samplingRate : 1) : 0;
+  const xMin = x[0] ?? i0;
+  const xMax = x[x.length - 1] ?? i1;
+  const pad = xMax === xMin ? 1 : 0;
   return {
     traces,
     xMin,

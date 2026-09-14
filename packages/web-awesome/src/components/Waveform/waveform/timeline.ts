@@ -35,6 +35,31 @@ export function timeAt(timeline: Timeline, index: number): number {
   return timeline.t0 + index * timeline.dt;
 }
 
+/**
+ * Time marker at a possibly-fractional sample index, used only for axis-tick and
+ * readout labels. For an array timeline (arbitrary, non-uniform, possibly
+ * non-monotonic markers) this linearly interpolates between neighbouring
+ * samples and clamps at the ends; charts are drawn against the sample index, not
+ * this value, so the timeline never needs to be uniform or sorted.
+ */
+export function timeAtInterp(timeline: Timeline, index: number): number {
+  if (!(timeline instanceof Float64Array)) {
+    return timeline.t0 + index * timeline.dt;
+  }
+  const len = timeline.length;
+  if (len === 0) return Number.NaN;
+  if (index <= 0) return timeline[0];
+  if (index >= len - 1) return timeline[len - 1];
+  const lo = Math.floor(index);
+  const hi = lo + 1;
+  const frac = index - lo;
+  const a = timeline[lo];
+  const b = timeline[hi];
+  if (!Number.isFinite(a)) return Number.isFinite(b) ? b : Number.NaN;
+  if (!Number.isFinite(b)) return a;
+  return a + (b - a) * frac;
+}
+
 export function timelineUnit(timeline: Timeline): string {
   if (timeline instanceof Float64Array) return "s";
   return timeline.unit || "s";
