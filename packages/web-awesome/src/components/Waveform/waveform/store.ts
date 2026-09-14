@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "preact/compat";
 
 import type { ColorScheme } from "../theme";
 import type { NormalizedWaveform } from "./normalize";
-import { pairsFromChannels } from "./pairs";
+import { type Pair, pairsFromChannels } from "./pairs";
 import { fullRange, type SampleRange } from "./viewRange";
 
 export type Tool = "box" | "pan" | "cursor";
@@ -55,14 +55,14 @@ const createStore = (init: (set: (partial: Partial<State>) => void, get: () => S
   let state: Store;
   const listeners = new Set<Listener>();
 
-  const set = (partial: Partial<State>) => {
+  const set = (partial: Partial<State>): void => {
     const prev = state;
     state = { ...state, ...partial };
     listeners.forEach((listener) => listener(state, prev));
   };
 
-  const getState = () => state;
-  const subscribe = (listener: Listener) => {
+  const getState = (): Store => state;
+  const subscribe = (listener: Listener): (() => void) => {
     listeners.add(listener);
     return () => {
       listeners.delete(listener);
@@ -145,7 +145,7 @@ export const useWaveformStore = createStore((set, get) => ({
   setScheme: (scheme) => set({ scheme }),
 }));
 
-export function currentPairs() {
+export function currentPairs(): Pair[] {
   const data = useWaveformStore.getState().data;
   return data ? pairsFromChannels(data.channels) : [];
 }

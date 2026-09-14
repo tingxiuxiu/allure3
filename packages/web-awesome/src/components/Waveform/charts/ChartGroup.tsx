@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "preact/compat";
-import { createPortal, flushSync } from "preact/compat";
+import type { VNode } from "preact";
+import { createPortal, flushSync, useEffect, useRef, useState } from "preact/compat";
 import uPlot from "uplot";
 
 import "uplot/dist/uPlot.min.css";
@@ -30,6 +30,18 @@ function pickCursorTarget(a: number | null, b: number | null, idx: number): "A" 
   return Math.abs(idx - a) <= Math.abs(idx - b) ? "A" : "B";
 }
 
+type ChannelReadoutsProps = {
+  leftPx: number;
+  frac: number;
+  index: number;
+  ids: string[];
+  group: string;
+  data: NormalizedWaveform;
+  tag?: "A" | "B";
+  preferLeft?: boolean;
+  scheme: ColorScheme;
+};
+
 function ChannelReadouts({
   leftPx,
   frac,
@@ -40,17 +52,7 @@ function ChannelReadouts({
   tag,
   preferLeft,
   scheme,
-}: {
-  leftPx: number;
-  frac: number;
-  index: number;
-  ids: string[];
-  group: string;
-  data: NormalizedWaveform;
-  tag?: "A" | "B";
-  preferLeft?: boolean;
-  scheme: ColorScheme;
-}) {
+}: ChannelReadoutsProps): VNode {
   const goLeft = preferLeft ? frac >= 0.28 : frac > 0.72;
   return (
     <div
@@ -79,24 +81,22 @@ function ChannelReadouts({
   );
 }
 
-function PlotOverlay({
-  over,
-  plot,
-  group,
-  data,
-  visible,
-}: {
+type PlotOverlayProps = {
   over: HTMLDivElement;
   plot: uPlot;
   group: string;
   data: NormalizedWaveform;
   visible: Set<string>;
-}) {
+};
+
+function PlotOverlay({ over, plot, group, data, visible }: PlotOverlayProps): VNode {
   const hoverIndex = useWaveformStore((s) => s.hoverIndex);
   const cursorA = useWaveformStore((s) => s.cursorA);
   const cursorB = useWaveformStore((s) => s.cursorB);
   const scheme = useWaveformStore((s) => s.scheme);
-  const view = useWaveformStore((s) => s.view);
+  // Subscribe to `view` so cursor pixel positions recompute after the x-scale changes.
+  useWaveformStore((s) => s.view);
+
   const plotW = plot.over.clientWidth || 1;
   // Charts are drawn against the sample index, so cursor lines are positioned by index.
   const hoverPx = hoverIndex != null ? posOfSample(plot, hoverIndex) : null;
@@ -104,7 +104,6 @@ function PlotOverlay({
   const bPx = cursorB != null ? posOfSample(plot, cursorB) : null;
   const showHover = hoverPx != null && hoverIndex != null && hoverIndex !== cursorA && hoverIndex !== cursorB;
   const groupIds = Object.keys(data.groups[group] ?? {}).filter((id) => visible.has(id));
-  void view;
 
   return createPortal(
     <div className="plot-layer">
@@ -158,44 +157,37 @@ function PlotOverlay({
   );
 }
 
-export function ChartGroup({ group, data, visible }: Props) {
+export function ChartGroup({ group, data, visible }: Props): VNode {
   const canvasRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
   const seriesKeyRef = useRef("");
   const dragRef = useRef<Drag | null>(null);
   const eventsRef = useRef<AbortController | null>(null);
-  const dataRef = useRef(data);
-  const visibleRef = useRef(visible);
-  const yFollowRef = useRef(false);
-  const schemeRef = useRef(useWaveformStore.getState().scheme);
   const [over, setOver] = useState<HTMLDivElement | null>(null);
 
-  const yFollow = useWaveformStore((s) => s.yFollow);
-  const tool = useWaveformStore((s) => s.tool);
-  const scheme = useWaveformStore((s) => s.scheme);
-  const idsKey = [...visible].sort().join(",");
-
-  dataRef.current = data;
-  visibleRef.current = visible;
-  yFollowRef.current = yFollow;
-  schemeRef.current = scheme;
-
+  // One effect owns the uPlot lifetime for this (group, data, visible). `visible` is
+  // memoized by WaveformPage, so its identity changes only when the channel set does
+  // (which requires a plot rebuild anyway). Every reactive update (view / yFollow /
+  // scheme / tool) is applied imperatively by a single store subscription that reads
+  // fresh state via getState(), so ChartGroup itself never re-renders on store changes.
   useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
+    const host = canvasRef.current;
+    if (!host) return;
 
-    const attach = (plot: uPlot) => {
+    const sampleCount = data.sampleCount;
+
+    const attachInteractions = (plot: uPlot): void => {
       eventsRef.current?.abort();
-      const ac = new AbortController();
-      eventsRef.current = ac;
-      const { signal } = ac;
+      const controller = new AbortController();
+      eventsRef.current = controller;
+      const { signal } = controller;
       const hit = plot.over;
-      const n = dataRef.current.sampleCount;
 
       // X is the sample index, so client X -> sample index is a rounded posToVal.
-      const idxAt = (clientX: number) => Math.max(0, Math.min(n - 1, Math.round(timeAtClientX(plot, clientX))));
+      const idxAt = (clientX: number): number =>
+        Math.max(0, Math.min(sampleCount - 1, Math.round(timeAtClientX(plot, clientX))));
 
-      const endDrag = () => {
+      const endDrag = (): void => {
         clearSelect(plot);
         dragRef.current = null;
       };
@@ -206,8 +198,7 @@ export function ChartGroup({ group, data, visible }: Props) {
           if (ev.button !== 0) return;
           ev.preventDefault();
           const st = useWaveformStore.getState();
-          const x = plotX(plot, ev.clientX);
-          const drag: Drag = { clientX0: ev.clientX, plotX0: x, panAcc: 0, cursorTarget: null };
+          const drag: Drag = { clientX0: ev.clientX, plotX0: plotX(plot, ev.clientX), panAcc: 0, cursorTarget: null };
           if (st.data) st.setHoverIndex(idxAt(ev.clientX));
           if (st.tool === "pan") st.snapshotView();
           if (st.tool === "cursor") {
@@ -268,7 +259,7 @@ export function ChartGroup({ group, data, visible }: Props) {
           const t0 = plot.posToVal(start.plotX0, "x");
           const t1 = timeAtClientX(plot, ev.clientX);
           if (Math.abs(plotX(plot, ev.clientX) - start.plotX0) > 4) {
-            st.setView(clampRange(Math.round(t0), Math.round(t1), n));
+            st.setView(clampRange(Math.round(t0), Math.round(t1), sampleCount));
           }
         },
         { signal, capture: true },
@@ -293,79 +284,66 @@ export function ChartGroup({ group, data, visible }: Props) {
           const max = plot.scales.x.max;
           if (min == null || max == null || max === min) return;
           const frac = (timeAtClientX(plot, ev.clientX) - min) / (max - min);
-          st.setView(zoomAt(st.view, frac, ev.deltaY > 0 ? 1.2 : 0.8, n));
+          st.setView(zoomAt(st.view, frac, ev.deltaY > 0 ? 1.2 : 0.8, sampleCount));
         },
         { signal, passive: false },
       );
     };
 
-    const paint = () => {
-      const host = canvasRef.current;
-      const d = dataRef.current;
-      if (!host) return;
+    const render = (): void => {
+      const st = useWaveformStore.getState();
       const w = Math.max(32, host.clientWidth);
       const h = Math.max(32, host.clientHeight);
-      const st = useWaveformStore.getState();
-      const model = buildChartModel(
-        d,
-        group,
-        visibleRef.current,
-        st.view.i0,
-        st.view.i1,
-        w,
-        yFollowRef.current,
-        schemeRef.current,
-      );
-      const key = `${schemeRef.current}|${model.traces.map((t) => `${t.id}:${t.color}`).join("|")}`;
+      const model = buildChartModel(data, group, visible, st.view.i0, st.view.i1, w, st.yFollow, st.scheme);
+      const key = `${st.scheme}|${model.traces.map((t) => `${t.id}:${t.color}`).join("|")}`;
       const aligned = toAligned(model);
-      let plot = plotRef.current;
-      if (!plot || seriesKeyRef.current !== key) {
+      const existing = plotRef.current;
+      // Series count and colors are fixed at creation time, so a change of channel
+      // set or theme requires a fresh uPlot; everything else is an in-place update.
+      if (!existing || seriesKeyRef.current !== key) {
         eventsRef.current?.abort();
         flushSync(() => setOver(null));
-        plot?.destroy();
-        const unit = timelineUnit(d.timeline);
-        const fmtX = (v: number) => formatAxisTime(timeAtInterp(d.timeline, v), unit);
-        plot = new uPlot(uplotOptions(model, schemeRef.current, w, h, fmtX), aligned, host);
+        existing?.destroy();
+        const unit = timelineUnit(data.timeline);
+        const fmtX = (v: number): string => formatAxisTime(timeAtInterp(data.timeline, v), unit);
+        const plot = new uPlot(uplotOptions(model, st.scheme, w, h, fmtX), aligned, host);
+        plot.over.dataset.tool = st.tool;
         plotRef.current = plot;
         seriesKeyRef.current = key;
         setOver(plot.over);
-        attach(plot);
+        attachInteractions(plot);
       } else {
-        plot.setSize({ width: w, height: h });
-        plot.setData(aligned, false);
-        plot.setScale("x", { min: model.xMin, max: model.xMax });
-        if (model.yMin != null && model.yMax != null) plot.setScale("y", { min: model.yMin, max: model.yMax });
-        else plot.redraw();
+        existing.setSize({ width: w, height: h });
+        existing.setData(aligned, false);
+        existing.setScale("x", { min: model.xMin, max: model.xMax });
+        if (model.yMin != null && model.yMax != null) existing.setScale("y", { min: model.yMin, max: model.yMax });
+        else existing.redraw();
       }
     };
 
-    paint();
-    const ro = new ResizeObserver(paint);
-    ro.observe(el);
-    const unsub = useWaveformStore.subscribe((s, prev) => {
-      if (s.view === prev.view && s.yFollow === prev.yFollow) return;
-      paint();
+    render();
+    const resizeObserver = new ResizeObserver(() => render());
+    resizeObserver.observe(host);
+    const unsubscribe = useWaveformStore.subscribe((next, prev) => {
+      if (next.view !== prev.view || next.yFollow !== prev.yFollow || next.scheme !== prev.scheme) {
+        render();
+      }
+      if (next.tool !== prev.tool) {
+        const overEl = plotRef.current?.over;
+        if (overEl) overEl.dataset.tool = next.tool;
+      }
     });
-    return () => {
-      unsub();
-      ro.disconnect();
-      eventsRef.current?.abort();
-    };
-  }, [data, group, idsKey, scheme]);
 
-  useEffect(() => {
     return () => {
+      unsubscribe();
+      resizeObserver.disconnect();
       eventsRef.current?.abort();
       setOver(null);
       plotRef.current?.destroy();
       plotRef.current = null;
       seriesKeyRef.current = "";
     };
-  }, [group]);
-
-  useEffect(() => {
-    if (over) over.dataset.tool = tool;
-  }, [over, tool]);
+  }, [group, data, visible]);
 
   const plot = plotRef.current;
 

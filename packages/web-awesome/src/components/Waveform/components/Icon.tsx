@@ -1,4 +1,4 @@
-import type { ComponentChildren } from "preact";
+import type { ComponentChildren, VNode } from "preact";
 
 type IconName =
   | "box"
@@ -71,7 +71,7 @@ const paths: Record<IconName, ComponentChildren> = {
   moon: <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 7 7 0 0 0 20 14.5Z" />,
 };
 
-export function Icon({ name, size = 16 }: Props) {
+export function Icon({ name, size = 16 }: Props): VNode {
   return (
     <svg
       aria-hidden="true"
