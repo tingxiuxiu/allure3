@@ -1,3 +1,4 @@
+import type { VNode } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/compat";
 
 import { ChartGroup } from "../charts/ChartGroup";
@@ -18,7 +19,7 @@ type Props = {
   onToggleTheme: () => void;
 };
 
-export function WaveformPage({ data, onToggleTheme }: Props) {
+export function WaveformPage({ data, onToggleTheme }: Props): VNode {
   const rootRef = useRef<HTMLDivElement>(null);
   const setData = useWaveformStore((s) => s.setData);
   const tool = useWaveformStore((s) => s.tool);

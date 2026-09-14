@@ -1,3 +1,5 @@
+import type { VNode } from "preact";
+
 import type { Pair } from "../waveform/pairs";
 
 type Props = {
@@ -6,7 +8,7 @@ type Props = {
   onToggle: (id: string) => void;
 };
 
-export function ChannelPanel({ pairs, hiddenPairs, onToggle }: Props) {
+export function ChannelPanel({ pairs, hiddenPairs, onToggle }: Props): VNode {
   return (
     <div className="channel-list">
       {pairs.map((p) => (

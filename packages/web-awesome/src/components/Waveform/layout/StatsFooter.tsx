@@ -1,3 +1,5 @@
+import type { VNode } from "preact";
+
 import { STAT_CARDS, channelColor } from "../theme";
 import { useWaveformStore } from "../waveform/store";
 import type { ChannelStats } from "../waveform/types";
@@ -41,9 +43,10 @@ export function StatsFooter({
   windowChannels,
   voltageImb,
   currentImb,
-}: Props) {
+}: Props): VNode {
   const scheme = useWaveformStore((s) => s.scheme);
-  const getSt = (id: string) => (windowChannels ? windowChannels[id] : asChannelStats(statsFull?.[id]));
+  const getSt = (id: string): ChannelStats | null =>
+    windowChannels ? windowChannels[id] : asChannelStats(statsFull?.[id]);
 
   if (embedded) {
     return (

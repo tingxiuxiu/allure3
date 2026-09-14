@@ -1,3 +1,5 @@
+import type { VNode } from "preact";
+
 import { Icon } from "../components/Icon";
 import type { ColorScheme } from "../theme";
 import type { Tool } from "../waveform/store";
@@ -40,7 +42,7 @@ export function AppBar({
   onFullscreen,
   scheme,
   onScheme,
-}: Props) {
+}: Props): VNode {
   return (
     <header className="app-bar">
       <div className="brand-lockup">

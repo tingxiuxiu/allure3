@@ -1,6 +1,10 @@
+import type { VNode } from "preact";
+
 import { CORE_GROUPS, GROUP_LABELS, channelColor } from "../theme";
 import { useWaveformStore } from "../waveform/store";
 import type { ChannelMeta } from "../waveform/types";
+
+type CursorGroupSection = { group: string; rows: ChannelMeta[] };
 
 function fmt(v: unknown, digits = 2): string {
   if (typeof v === "number" && Number.isFinite(v)) return v.toFixed(digits);
@@ -14,7 +18,7 @@ function fmtSigned(v: number, digits = 2): string {
   return abs;
 }
 
-function groupRows(channels: ChannelMeta[], ids: string[]) {
+function groupRows(channels: ChannelMeta[], ids: string[]): CursorGroupSection[] {
   const meta = new Map(channels.map((ch) => [ch.id, ch]));
   const extra = ids.filter((id) => !meta.has(id)).map((id) => ({ id, group: "other" }));
   const all = [...channels, ...extra];
@@ -52,7 +56,7 @@ function fmtHz(hz: number): string {
   return `${hz.toFixed(2)} Hz`;
 }
 
-function CursorMarker({ mark, index, timeAt, unit, onClear }: MarkerProps) {
+function CursorMarker({ mark, index, timeAt, unit, onClear }: MarkerProps): VNode {
   return (
     <div className="cursor-mark" data-mark={mark}>
       <span className="cursor-badge" aria-hidden="true">
@@ -95,7 +99,17 @@ type Props = {
   onClearB: () => void;
 };
 
-export function CursorPanel({ timeAt, unit, cursorA, cursorB, channels, aVals, bVals, onClearA, onClearB }: Props) {
+export function CursorPanel({
+  timeAt,
+  unit,
+  cursorA,
+  cursorB,
+  channels,
+  aVals,
+  bVals,
+  onClearA,
+  onClearB,
+}: Props): VNode {
   const scheme = useWaveformStore((s) => s.scheme);
   const ids = Object.keys({ ...aVals, ...bVals });
   const sections = groupRows(channels, ids);
