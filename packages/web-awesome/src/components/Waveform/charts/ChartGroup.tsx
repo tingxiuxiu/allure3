@@ -6,7 +6,7 @@ import "uplot/dist/uPlot.min.css";
 import { channelColor, channelFill, type ColorScheme } from "../theme";
 import type { NormalizedWaveform } from "../waveform/normalize";
 import { useWaveformStore } from "../waveform/store";
-import { indexOnTimeline, samplesPerUnit, timeAt, timelineUnit } from "../waveform/timeline";
+import { formatAxisTime, timeAtInterp, timelineUnit } from "../waveform/timeline";
 import { clampRange, panRange, zoomAt } from "../waveform/viewRange";
 import { buildChartModel } from "./chartModel";
 import { clearSelect, plotX, posOfSample, setSelectX, timeAtClientX, toAligned, uplotOptions } from "./uplotOption";
@@ -98,10 +98,10 @@ function PlotOverlay({
   const scheme = useWaveformStore((s) => s.scheme);
   const view = useWaveformStore((s) => s.view);
   const plotW = plot.over.clientWidth || 1;
-  const tOf = (i: number) => timeAt(data.timeline, i);
-  const hoverPx = hoverIndex != null ? posOfSample(plot, tOf(hoverIndex)) : null;
-  const aPx = cursorA != null ? posOfSample(plot, tOf(cursorA)) : null;
-  const bPx = cursorB != null ? posOfSample(plot, tOf(cursorB)) : null;
+  // Charts are drawn against the sample index, so cursor lines are positioned by index.
+  const hoverPx = hoverIndex != null ? posOfSample(plot, hoverIndex) : null;
+  const aPx = cursorA != null ? posOfSample(plot, cursorA) : null;
+  const bPx = cursorB != null ? posOfSample(plot, cursorB) : null;
   const showHover = hoverPx != null && hoverIndex != null && hoverIndex !== cursorA && hoverIndex !== cursorB;
   const groupIds = Object.keys(data.groups[group] ?? {}).filter((id) => visible.has(id));
   void view;
@@ -191,10 +191,9 @@ export function ChartGroup({ group, data, visible }: Props) {
       const { signal } = ac;
       const hit = plot.over;
       const n = dataRef.current.sampleCount;
-      const tl = dataRef.current.timeline;
-      const perUnit = samplesPerUnit(tl, dataRef.current.samplingRate);
 
-      const idxAt = (clientX: number) => indexOnTimeline(timeAtClientX(plot, clientX), tl, n);
+      // X is the sample index, so client X -> sample index is a rounded posToVal.
+      const idxAt = (clientX: number) => Math.max(0, Math.min(n - 1, Math.round(timeAtClientX(plot, clientX))));
 
       const endDrag = () => {
         clearSelect(plot);
@@ -244,7 +243,7 @@ export function ChartGroup({ group, data, visible }: Props) {
           if (st.tool === "pan" && st.data) {
             const t0 = timeAtClientX(plot, start.clientX0);
             const t1 = timeAtClientX(plot, ev.clientX);
-            start.panAcc += (t0 - t1) * perUnit;
+            start.panAcc += t0 - t1;
             start.clientX0 = ev.clientX;
             const step = start.panAcc > 0 ? Math.floor(start.panAcc) : Math.ceil(start.panAcc);
             if (step !== 0) {
@@ -269,7 +268,7 @@ export function ChartGroup({ group, data, visible }: Props) {
           const t0 = plot.posToVal(start.plotX0, "x");
           const t1 = timeAtClientX(plot, ev.clientX);
           if (Math.abs(plotX(plot, ev.clientX) - start.plotX0) > 4) {
-            st.setView(clampRange(indexOnTimeline(t0, tl, n), indexOnTimeline(t1, tl, n), n));
+            st.setView(clampRange(Math.round(t0), Math.round(t1), n));
           }
         },
         { signal, capture: true },
@@ -324,7 +323,9 @@ export function ChartGroup({ group, data, visible }: Props) {
         eventsRef.current?.abort();
         flushSync(() => setOver(null));
         plot?.destroy();
-        plot = new uPlot(uplotOptions(model, schemeRef.current, w, h, timelineUnit(d.timeline)), aligned, host);
+        const unit = timelineUnit(d.timeline);
+        const fmtX = (v: number) => formatAxisTime(timeAtInterp(d.timeline, v), unit);
+        plot = new uPlot(uplotOptions(model, schemeRef.current, w, h, fmtX), aligned, host);
         plotRef.current = plot;
         seriesKeyRef.current = key;
         setOver(plot.over);
