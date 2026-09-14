@@ -1,7 +1,6 @@
 import uPlot from "uplot";
 
 import type { ColorScheme } from "../theme";
-import { formatAxisTime } from "../waveform/timeline";
 import type { ChartModel } from "./chartModel";
 
 const CHROME: Record<ColorScheme, { label: string; axis: string; grid: string }> = {
@@ -27,7 +26,7 @@ export function uplotOptions(
   scheme: ColorScheme,
   width: number,
   height: number,
-  xUnit = "s",
+  formatX: (indexValue: number) => string = (v) => String(v),
 ): uPlot.Options {
   const chrome = CHROME[scheme];
   const traces = model.traces;
@@ -55,7 +54,7 @@ export function uplotOptions(
       {
         ...axis,
         size: 28,
-        values: (_u, vals) => vals.map((v) => formatAxisTime(v, xUnit)),
+        values: (_u, vals) => vals.map((v) => formatX(v)),
       },
       {
         ...axis,
