@@ -106,6 +106,25 @@ def test_nonuniform_timeline_marker(attach_waveform):
 
 
 @allure.epic("电机台架试验")
+@allure.feature("变频器稳态驱动")
+@allure.story("teardown 登记波形")
+@allure.tag("waveform", "teardown")
+@allure.title("teardown 内登记波形：用例最后才加入数据（波形页仍应渲染）")
+@allure.description(
+    "有些用例直到 teardown（fixture 的 after 阶段）才产出并登记 waveform 附件。"
+    "此时附件落在用例的 teardown 层而非 body 层，原生波形页需要同时检查 teardown 层。"
+)
+def test_waveform_attached_in_teardown(waveform_teardown):
+    with allure.step("台架采集"):
+        groups = mock_steady_drive(n=N, fs=FS)
+        doc = build_waveform_document(sample_count=N, sampling_rate=FS, groups=groups)
+
+    # 直到 teardown 才登记波形（fixture 在测试体结束后 attach）。
+    waveform_teardown["doc"] = doc
+    assert doc["stats"]["full"]["Va"]["rms"] is not None
+
+
+@allure.epic("电机台架试验")
 @allure.feature("冒烟")
 @allure.story("无波形用例")
 @allure.title("普通断言用例：不产生波形（详情底部无波形页）")
