@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Callable
 
@@ -24,3 +25,18 @@ from waveform_report import attach_waveform as _attach_waveform
 def attach_waveform() -> Callable[[dict[str, Any]], None]:
     """Return a helper: ``attach_waveform(doc)`` attaches it to the current test."""
     return _attach_waveform
+
+
+@pytest.fixture
+def waveform_teardown() -> Iterator[dict[str, Any]]:
+    """Attach the waveform during fixture teardown (the "after" phase).
+
+    The test fills ``slot["doc"]`` with the waveform document; it is attached
+    after the test body, so the attachment lands under the test's teardown
+    fixtures rather than its body. The native page must look there too.
+    """
+    slot: dict[str, Any] = {}
+    yield slot
+    doc = slot.get("doc")
+    if doc is not None:
+        _attach_waveform(doc)

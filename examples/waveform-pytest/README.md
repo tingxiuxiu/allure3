@@ -152,8 +152,29 @@ allure.attach(json.dumps(doc), name="waveform", attachment_type=allure.attachmen
 ```
 
 so any equivalent call works. You may attach it in the test body, inside a step, or in
-a fixture — the report finds the `waveform`‑named JSON attachment on the test result and
-renders the page.
+a **teardown/setup fixture** — the report scans the body, then teardown fixtures, then
+setup fixtures for the `waveform`‑named JSON attachment and renders the page. Attaching
+late (in teardown) is common when the data is only produced at the very end:
+
+```python
+# conftest.py
+import pytest
+from waveform_report import attach_waveform
+
+@pytest.fixture
+def waveform_teardown():
+    slot = {}
+    yield slot
+    if slot.get("doc") is not None:
+        attach_waveform(slot["doc"])   # attached during teardown -> lands under teardown[]
+
+# test
+def test_case(waveform_teardown):
+    ...
+    waveform_teardown["doc"] = doc     # registered after the test body
+```
+
+See `test_waveform_attached_in_teardown` for the runnable version.
 
 ## Page features
 
